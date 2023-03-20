@@ -24,6 +24,8 @@ enum MessageType {
   Post = 16, // Moment, Channel, Tweet, etc
 }
 
+const prompts = new Map()
+
 const SINGLE_MESSAGE_MAX_SIZE = 500;
 export class ChatGPTBot {
   chatPrivateTriggerKeyword = config.chatPrivateTriggerKeyword;
@@ -50,34 +52,45 @@ export class ChatGPTBot {
     const command = text.split(" ")[0];
     console.log(`command: ${command}`);
     switch (command) {
-      case "help":
+      case "帮助":
         await this.trySay(talker,"========\n" +
-          "/cmd help\n" +
+          "帮助\n" +
           "# 显示帮助信息\n" +
-          "/cmd prompt <PROMPT>\n" +
-          "# 设置当前会话的prompt\n" +
-          "/cmd clear\n" +
+          "开始\n" +
+          "# 开始会话\n" +
+          "结束\n" +
           "# 清除自上次启动以来的所有会话\n" +
           "========");
         break;
-      case "prompt":
-        let prompt = text.slice(command.length+1);
+      case "开始":
         if (talker instanceof RoomImpl) {
-          setPromptByUsername(talker.id, prompt);
-          await this.trySay(talker,"设置成功!");
+          let prompt = prompts.get(talker.id)
+          if (!prompt) {
+            prompts.set(talker.id, 1)
+            prompt = 1;
+          }
+          const promptText = `Session - ${prompt}`
+          setPromptByUsername(talker.id, promptText);
+          await this.trySay(talker,"开启对话成功, 可以开始提问啦");
         }else if (talker instanceof ContactImpl) {
-          setPromptByUsername(talker.name(), prompt);
-          await this.trySay(talker,"设置成功");
+          let prompt = prompts.get(talker.id)
+          if (!prompt) {
+            prompts.set(talker.id, 1)
+            prompt = 1;
+          }
+          const promptText = `Session - ${prompt}`
+          setPromptByUsername(talker.name(), promptText);
+          await this.trySay(talker,"开启对话成功, 可以开始提问啦");
         }
         break;
-      case "clear":
+      case "结束":
         console.log("清除会话");
         if (talker instanceof RoomImpl) {
           clearUserData(talker.id);
-          await this.trySay(talker,"清除成功!");
+          await this.trySay(talker,"结束对话!");
         }else if (talker instanceof ContactImpl) {
           clearUserData(talker.name());
-          await this.trySay(talker,"清除成功");
+          await this.trySay(talker,"结束对话");
         }
         break;
     }
@@ -212,10 +225,10 @@ export class ChatGPTBot {
     if (this.isNonsense(talker, messageType, rawText)) {
       return;
     }
-    if (rawText.startsWith("/cmd ")){
+    const text = rawText.trim()
+    if (text === '开始' || text === '帮助' || text === '结束') {
       console.log(`🤖 Command: ${rawText}`)
-      const text = rawText.slice(5) // 「/cmd 」一共5个字符(注意空格)
-      return await this.command(privateChat?talker:room, text);
+      return await this.command(privateChat?talker:room, rawText.trim());
     }
     if (this.triggerGPTMessage(rawText, privateChat)) {
       const text = this.cleanMessage(rawText, privateChat);
