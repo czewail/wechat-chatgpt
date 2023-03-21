@@ -39,8 +39,8 @@ async function main() {
         console.error(e);
       }
     })
-    .on("error",()=>{
-      console.log("ERROR !!!");
+    .on("error",(e)=>{
+      console.log("ERROR !!!", e);
     });
   try {
     await bot.start();
